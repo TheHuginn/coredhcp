@@ -1,43 +1,35 @@
-FROM ubuntu:22.04
+# --- Этап 1: Сборка (Builder) ---
+# Используем официальный образ Go (bookworm - это Debian, чтобы CGO_ENABLED=1 собрался нормально)
+FROM golang:1.24.4-bookworm AS builder
 
-LABEL BUILD="docker build -t coredhcp/coredhcp -f Dockerfile ."
-LABEL RUN="docker run --rm -it coredhcp/coredhcp"
+WORKDIR /app
 
-# Install dependencies
-RUN apt-get update &&                          \
-    apt-get install -y --no-install-recommends \
-        sudo \
-	iproute2 \
-        # to fetch the Go toolchain
-        ca-certificates \
-        wget \
-        # for go get
-        git \
-	# for CGo support
-	build-essential \
-        && \
-    rm -rf /var/lib/apt/lists/*
+# Шаг 1: Кэшируем зависимости
+# Копируем только файлы модулей, чтобы Docker закэшировал этот слой
+COPY go.mod go.sum ./
+RUN go mod download
 
-# install Go
-WORKDIR /tmp
-RUN set -exu; \
-    wget https://golang.org/dl/go1.23.4.linux-amd64.tar.gz ;\
-    tar -C / -xvzf go1.23.4.linux-amd64.tar.gz
-ENV PATH="$PATH:/go/bin:/build/bin"
-ENV GOPATH=/go:/build
+# Шаг 2: Копируем остальной исходный код
+COPY . .
+# Флаги -ldflags="-s -w" удалят отладочную информацию, сделав бинарь еще меньше
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /coredhcp coredhcp.go
 
-ENV PROJDIR=/build/src/github.com/coredhcp/coredhcp
-RUN mkdir -p $PROJDIR
-COPY . $PROJDIR
+# --- Этап 2: Финальный образ (Runner) ---
+# Берем легковесный образ Debian (так как юзали CGO, alpine может выдать проблемы с glibc/musl)
+FROM debian:bookworm-slim
 
-# build coredhcp
-RUN set -exu ;\
-    cd $PROJDIR/cmds/coredhcp ;\
-    go get -v ./... ;\
-    CGO_ENABLED=1 go build ;\
-    cp coredhcp /bin
+# Ставим iproute2, раз уж он был в оригинале (видимо, нужен для сети)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    iproute2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Забираем только готовый бинарник из первого этапа! Никакого компилятора в финальном образе.
+COPY --from=builder /coredhcp /bin/coredhcp
+COPY ./config.yaml /coredhcp/
 
 EXPOSE 67/udp
 EXPOSE 547/udp
 
-CMD coredhcp --conf /etc/coredhcp/config.yaml
+
+# Используем exec-форму CMD для корректной обработки сигналов остановки
+CMD ["coredhcp"]
