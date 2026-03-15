@@ -13,11 +13,9 @@ import (
 
 	"github.com/coredhcp/coredhcp/config"
 	"github.com/coredhcp/coredhcp/logger"
-	"github.com/coredhcp/coredhcp/plugins/dumbone"
-	"github.com/coredhcp/coredhcp/plugins/leasetime"
-	"github.com/coredhcp/coredhcp/server"
-
 	"github.com/coredhcp/coredhcp/plugins"
+	"github.com/coredhcp/coredhcp/plugins/etcd"
+	"github.com/coredhcp/coredhcp/server"
 	"github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 )
@@ -48,8 +46,7 @@ func getLogLevels() []string {
 }
 
 var desiredPlugins = []*plugins.Plugin{
-	&dumbone.Plugin,
-	&leasetime.Plugin,
+	&etcd.Plugin,
 }
 
 func main() {
@@ -77,10 +74,12 @@ func main() {
 		log.Infof("Disabling logging to stdout/stderr")
 		logger.WithNoStdOutErr(log)
 	}
+
 	conf, err := config.Load(*flagConfig)
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
+
 	// register plugins
 	for _, plugin := range desiredPlugins {
 		if err := plugins.RegisterPlugin(plugin); err != nil {

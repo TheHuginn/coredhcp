@@ -7,8 +7,6 @@
 # (DHCPv4 and DHCPv6). There is no shared configuration at the moment.
 # At a high level, both accept the same structure of configuration
 
-
-
 # DHCPv4 configuration
 server4:
   # listen is an optional section to specify how the server binds to an
@@ -16,16 +14,29 @@ server4:
   # If unset, the server will listen on the broadcast address on all
   # interfaces, equivalent to:
   listen:
-    - "192.168.0.2"
+   - 192.168.0.2
 
+  # In general, listen takes a list of addresses, with the general syntax
+  # "address%interface:port", where each part is optional.
+  # * Omitting the address results in the wildcard address being used
+  # * Omitting the interface skips binding the listener to a specific interface
+  #   and listens on all interfaces instead
+  # * Omitting the port uses the default port for DHCPv4 (67)
+  #
+  # For example:
+  # - ":44480" Listens on a specific port.
+  # - "%eno1" Listens on the wildcard address on one interface.
+  # - "192.0.2.1%eno1:44480" with all parts
+
+  # plugins is a mandatory section, which defines how requests are handled.
+  # It is a list of maps, matching plugin names to their arguments.
+  # The order is meaningful, as incoming requests are handled by each plugin
+  # in turn. There is no default value for a plugin configuration, and a
+  # plugin that is not mentioned will not be loaded at all
+  #
+  # The following contains examples of the most common, builtin plugins.
+  # External plugins should document their arguments in their own
+  # documentations or readmes
   plugins:
-    - dumbone:
 
-# Etcd configuration
-Etcd:
-  #specify endpoints
-  Endpoints:
-    - 192.168.0.2
-    - 192.168.0.4
-    - 192.168.0.6
-
+    - etcd: 192.168.0.2:2379 192.168.0.4:2379 192.168.0.6:2379
