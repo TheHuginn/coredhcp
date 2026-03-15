@@ -1,0 +1,31 @@
+# CoreDHCP configuration (yaml)
+
+# In this file, lines starting with "## " represent default values,
+# while uncommented lines are examples which have no default value
+
+# The base level configuration has two sections, one for each protocol version
+# (DHCPv4 and DHCPv6). There is no shared configuration at the moment.
+# At a high level, both accept the same structure of configuration
+
+
+
+# DHCPv4 configuration
+server4:
+  # listen is an optional section to specify how the server binds to an
+  # interface or address.
+  # If unset, the server will listen on the broadcast address on all
+  # interfaces, equivalent to:
+  listen:
+    - "192.168.0.2"
+
+  plugins:
+    - dumbone:
+
+# Etcd configuration
+Etcd:
+  #specify endpoints
+  Endpoints:
+    - 192.168.0.2
+    - 192.168.0.4
+    - 192.168.0.6
+

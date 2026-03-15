@@ -32,6 +32,7 @@ type Config struct {
 	v       *viper.Viper
 	Server6 *ServerConfig
 	Server4 *ServerConfig
+	Etcd    *EtcdConfig
 }
 
 // New returns a new initialized instance of a Config object
@@ -77,6 +78,13 @@ func Load(pathOverride string) (*Config, error) {
 	if err := c.parseConfig(protocolV4); err != nil {
 		return nil, err
 	}
+
+	//Parse Custom Configs
+	if err := c.ParseEtcdConfig(); err != nil {
+		//Or return nil and error to prevent CoreDHCP from loading
+		log.Println("Etcd: configuration error,", err)
+	}
+
 	if c.Server6 == nil && c.Server4 == nil {
 		return nil, ConfigErrorFromString("need at least one valid config for DHCPv6 or DHCPv4")
 	}
@@ -109,6 +117,7 @@ func parsePlugins(pluginList []interface{}) ([]PluginConfig, error) {
 		// only one item, as enforced above, so read just that
 		for k, v := range conf {
 			name = k
+
 			args = strings.Fields(cast.ToString(v))
 			break
 		}
